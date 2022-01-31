@@ -1,8 +1,17 @@
 package services;
 
+import io.qameta.allure.Allure;
+import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.http.Header;
-import org.testng.annotations.*;
+import io.restassured.internal.RequestSpecificationImpl;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import org.testng.Assert;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
 
@@ -41,7 +50,7 @@ public class BookingTest {
 
 
 
-    @Test
+    @Test(priority = 1)
     public void postCreateBooking(){
 
         Header contentType = new Header("Content-Type","application/json");
@@ -71,7 +80,7 @@ public class BookingTest {
 
 
 
-    @Test(dataProvider = "tokenProvider")
+    @Test(dataProvider = "tokenProvider",priority = 2)
     public void putUpdateBooking(String token){
         System.out.println("bookingid2" + bookingId);
 
@@ -97,8 +106,31 @@ public class BookingTest {
                 .when().put("https://restful-booker.herokuapp.com/booking/" + bookingId)
                 .then().statusCode(200).log().all();
 
+    }
+
+    @Test(priority = 3)
+    public void getBookingDetail(){
+
+        String baseUrl="https://restful-booker.herokuapp.com/booking/" + bookingId;
+
+
+        given().log().all()
+                .when().get(baseUrl)
+                .then().statusCode(200).log().all();
+
+        RequestSpecification requestSpecification = RestAssured.given()
+                .header("getBookingDetail","Test")
+                .log().all();
+
+        Response response = requestSpecification.get(baseUrl);
+        attachment(requestSpecification,baseUrl,response);
+        Assert.assertEquals(response.getStatusCode(),200);
+
 
     }
+
+
+
 
     @AfterTest
     public void deleteBooking(){
@@ -110,6 +142,20 @@ public class BookingTest {
         given().log().all().header(contentType).cookie("token",token)
                 .when().delete("https://restful-booker.herokuapp.com/booking/" + bookingId)
                 .then().statusCode(201).log().all();
+
+
+    }
+
+
+    public String attachment(RequestSpecification httpRequest, String baseUrl, Response response){
+
+        String html = "Url = " + baseUrl + "\n\n" +
+                "request header ="  +((RequestSpecificationImpl) httpRequest).getHeaders() + "\n\n" +
+                "request body =" +((RequestSpecificationImpl) httpRequest).getBody() + "\n\n" +
+                "response body =" + response.getBody().asString();
+
+        Allure.addAttachment("request detail",html);
+        return html;
 
 
     }
